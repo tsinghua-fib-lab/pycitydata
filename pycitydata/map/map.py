@@ -1,4 +1,5 @@
 import gc
+import logging
 import os
 import pickle
 import warnings
@@ -10,7 +11,7 @@ import pyproj
 import shapely
 import stringcase
 from geojson import Feature
-from google.protobuf.json_format import ParseDict, MessageToDict
+from google.protobuf.json_format import MessageToDict, ParseDict
 from pycityproto.city.geo.v2 import geo_pb2
 from pycityproto.city.map.v2 import map_pb2
 from pycityproto.city.routing.v2 import routing_pb2
@@ -46,6 +47,7 @@ class Map:
 
         Users can init Map with either mongo_uri, mongo_db, mongo_coll or pb_path.
         """
+        logging.debug("Map init")
         if cache_dir is None:
             # 显示runtime warning
             warnings.warn(
@@ -54,10 +56,13 @@ class Map:
             )
         map_data = None
         if mongo_uri is not None and mongo_db is not None and mongo_coll is not None:
+            logging.debug("Start download map data")
             map_data = self._download_map_with_cache(
                 mongo_uri, mongo_db, mongo_coll, cache_dir
             )
+            logging.debug("Finish download map data")
         if pb_path is not None:
+            logging.debug("Start parse pb file")
             with open(pb_path, "rb") as f:
                 pb = map_pb2.Map().FromString(f.read())
             jsons = []
@@ -81,6 +86,7 @@ class Map:
                     )
                     jsons.append({"class": class_name, "data": data})
             map_data = self._parse_map(jsons)
+            logging.debug("Finish parse pb file")
         if map_data is None:
             raise ValueError(
                 "You must provide either (mongo_uri, mongo_db, mongo_coll) or pb_path"
@@ -184,6 +190,7 @@ class Map:
     def _parse_map(self, m: List[Any]) -> Dict[str, Any]:
         # client = MongoClient(uri)
         # m = list(client[db][coll].find({}))
+        logging.debug("Start parse map data")
         header = None
         juncs = {}
         roads = {}
@@ -208,8 +215,10 @@ class Map:
             elif t == "header":
                 header = data
         assert header is not None, "header is None"
+        logging.debug("Finish parse map data - classify")
         projector = pyproj.Proj(header["projection"])  # type: ignore
         # 处理lane的Geos
+        logging.debug("Start process lane geos")
         for lane in lanes.values():
             nodes = np.array(
                 [[one["x"], one["y"]] for one in lane["center_line"]["nodes"]]
@@ -217,7 +226,9 @@ class Map:
             lane["shapely_xy"] = LineString(nodes)
             lngs, lats = projector(nodes[:, 0], nodes[:, 1], inverse=True)
             lane["shapely_lnglat"] = LineString(list(zip(lngs, lats)))
+        logging.debug("Finish process lane geos")
         # 处理road的Geos和其他属性
+        logging.debug("Start process road geos")
         for road in roads.values():
             lane_ids = road["lane_ids"]
             driving_lane_ids = [lid for lid in lane_ids if lanes[lid]["type"] == 1]
@@ -228,7 +239,9 @@ class Map:
             road["max_speed"] = center_lane["max_speed"]
             road["shapely_xy"] = center_lane["shapely_xy"]
             road["shapely_lnglat"] = center_lane["shapely_lnglat"]
+        logging.debug("Finish process road geos")
         # 处理Aoi的Geos
+        logging.debug("Start process aoi geos")
         for aoi in aois.values():
             if "area" not in aoi:
                 # 不是多边形aoi
@@ -246,13 +259,17 @@ class Map:
                 aoi["shapely_lnglat"] = Point(lnglat_positions[0])
             else:
                 aoi["shapely_lnglat"] = Polygon(lnglat_positions)
+        logging.debug("Finish process aoi geos")
         # 处理Poi的Geos
+        logging.debug("Start process poi geos")
         for poi in pois.values():
             point = Point(poi["position"]["x"], poi["position"]["y"])
             poi["shapely_xy"] = point
             lng, lat = projector(point.x, point.y, inverse=True)
             poi["shapely_lnglat"] = Point([lng, lat])
+        logging.debug("Finish process poi geos")
         # 为junction解算大致的中心点
+        logging.debug("Start calculate junction center")
         for junc in juncs.values():
             lane_shapelys = [
                 lanes[lane_id]["shapely_xy"] for lane_id in junc["lane_ids"]
@@ -260,6 +277,7 @@ class Map:
             geos = unary_union(lane_shapelys)
             center = geos.centroid
             junc["center"] = {"x": center.x, "y": center.y}
+        logging.debug("Finish calculate junction center")
 
         return {
             "header": header,
@@ -308,6 +326,7 @@ class Map:
         #     },
         #     "aoi_id": 500018954,
         # }
+        logging.debug("Start build geo index")
         aoi_list = list(self.aois.values())
         aoi_tree = shapely.STRtree([aoi["shapely_xy"] for aoi in aoi_list])
         poi_list = list(self.pois.values())
@@ -324,6 +343,7 @@ class Map:
         walking_lane_tree = shapely.STRtree(
             [lane["shapely_xy"] for lane in walking_lane_list]
         )
+        logging.debug("Finish build geo index")
         return (
             aoi_tree,
             aoi_list,
