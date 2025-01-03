@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pycitydata"
-version = "1.0.2"
+version = "1.0.3"
 description = "City Data Python SDK"
 authors = ["Jun Zhang <zhangjun990222@qq.com>"]
 license = "MIT"
