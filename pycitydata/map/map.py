@@ -48,7 +48,7 @@ class Map:
         Users can init Map with either mongo_uri, mongo_db, mongo_coll or pb_path.
         """
         logging.debug("Map init")
-        if cache_dir is None:
+        if cache_dir is None and pb_path is None:
             # 显示runtime warning
             warnings.warn(
                 "You are not using cache. "
@@ -801,35 +801,49 @@ class Map:
     def query_pois(
         self,
         center: Union[Tuple[float, float], Point],
-        radius: float,
-        category_prefix: str,
+        radius: Optional[float] = None,
+        category_prefix: Optional[str] = None,
         limit: Optional[int] = None,
-    ) -> List[Tuple[Any, float]]:
+        return_distance: bool = True,
+    ) -> Union[List[Tuple[Any, float]], List[Any]]:
         """
         查询center点指定半径内类别满足前缀的poi（按距离排序）。Query the POIs whose categories satisfy the prefix within the specified radius of the center point (sorted by distance).
 
         Args:
         - center (x, y): 中心点（xy坐标系）。Center point (xy coordinate system).
-        - radius (float): 半径（单位：m）。Radius (unit: m).
-        - category_prefix (str): 类别前缀，如实际类别为100000，那么匹配的前缀可以为10、1000等。Category prefix, if the actual category is 100000, then the matching prefix can be 10, 1000, etc.
+        - radius (float, optional): 半径（单位：m）。如果不提供则返回所有的poi。Radius (unit: m).If not provided, all pois within the map will be returned.
+        - category_prefix (str, optional): 类别前缀，如实际类别为100000，那么匹配的前缀可以为10、1000等。Category prefix, if the actual category is 100000, then the matching prefix can be 10, 1000, etc.
         - limit (int, optional): 最多返回的poi数量，按距离排序，近的优先（默认None）. The maximum number of POIs returned, sorted by distance, closest ones first (default to None).
+        - return_distance (bool): 是否返回距离。Return the distance or not.
 
         Returns:
-        - List[Tuple[Any, float]]: poi列表，每个元素为（poi, 距离）。poi list, each element is (poi, distance).
+        - Union[List[Tuple[Any, float]],List[Any]]: poi列表，每个元素为（poi, 距离）或者poi。poi list, each element is (poi, distance) or poi.
         """
         if not isinstance(center, Point):
             center = Point(center)
-        # 获取半径内的poi
-        indices = self._poi_tree.query(center.buffer(radius))
-        # 过滤掉不满足类别前缀的poi
-        pois = []
-        for index in indices:
-            poi = self._poi_list[index]
-            if poi["category"].startswith(category_prefix):
-                distance = center.distance(poi["shapely_xy"])
-                pois.append((poi, distance))
-        # 按照距离排序
-        pois = sorted(pois, key=lambda x: x[1])
+        if radius is None:
+            if return_distance:
+                pois = [(p, center.distance(p["shapely_xy"])) for p in self._poi_list]
+            else:
+                pois = [p for p in self._poi_list]
+        else:
+            # 获取半径内的poi
+            indices = self._poi_tree.query(center.buffer(radius))
+            # 过滤掉不满足类别前缀的poi
+            pois = []
+            for index in indices:
+                poi = self._poi_list[index]
+                if category_prefix is None or poi["category"].startswith(
+                    category_prefix
+                ):
+                    if return_distance:
+                        distance = center.distance(poi["shapely_xy"])
+                        pois.append((poi, distance))
+                    else:
+                        pois.append(poi)
+        if return_distance:
+            # 按照距离排序
+            pois = sorted(pois, key=lambda x: x[1])
         if limit is not None:
             pois = pois[:limit]
         return pois
