@@ -35,6 +35,7 @@ class Map:
         mongo_db: Optional[str] = None,
         mongo_coll: Optional[str] = None,
         cache_dir: Optional[str] = None,
+        cache_path: Optional[str] = None,
         pb_path: Optional[str] = None,
     ):
         """
@@ -43,6 +44,7 @@ class Map:
         - mongo_db (Optional[str]): 数据库名。Database name.
         - mongo_coll (Optional[str]): 集合名。Collection name.
         - cache_dir (Optional[str]): 缓存目录, Defaults to None. Cache directory, Defaults to None.
+        - cache_path (Optional[str]): 缓存文件路径, Defaults to None. Cache file path, Defaults to None.
         - pb_path (Optional[str]): pb文件路径, Defaults to None. pb file path, Defaults to None.
 
         Users can init Map with either mongo_uri, mongo_db, mongo_coll or pb_path.
@@ -61,7 +63,9 @@ class Map:
                 mongo_uri, mongo_db, mongo_coll, cache_dir
             )
             logging.debug("Finish download map data")
-        if pb_path is not None:
+        if pb_path is not None and (
+            cache_path is None or not os.path.exists(cache_path)
+        ):
             logging.debug("Start parse pb file")
             with open(pb_path, "rb") as f:
                 pb = map_pb2.Map().FromString(f.read())
@@ -87,6 +91,16 @@ class Map:
                     jsons.append({"class": class_name, "data": data})
             map_data = self._parse_map(jsons)
             logging.debug("Finish parse pb file")
+            if cache_path is not None:
+                if not os.path.exists(cache_path):
+                    logging.debug("Start save cache file")
+                    with open(cache_path, "wb") as f:
+                        pickle.dump(map_data, f)
+        if map_data is None and cache_path is not None:
+            logging.debug("Start load cache file")
+            with open(cache_path, "rb") as f:
+                map_data = pickle.load(f)
+            logging.debug("Finish load cache file")
         if map_data is None:
             raise ValueError(
                 "You must provide either (mongo_uri, mongo_db, mongo_coll) or pb_path"
