@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pycitydata"
-version = "1.1.0"
+version = "2.0.0"
 description = "City Data Python SDK"
 authors = ["Jun Zhang <zhangjun990222@qq.com>"]
 license = "MIT"
@@ -20,7 +20,7 @@ numpy = ">=1.24.0"
 geojson = ">=3.1.0"
 shapely = ">=2.0.0"
 pymongo = ">=3.12.1"
-pycityproto = ">=1.21.0"
+pycityproto = "^2.3.5"
 pyproj = ">=3.0.0"
 requests = ">=2.27.0"
 scipy = ">=1.7.0"
