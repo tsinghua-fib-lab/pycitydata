@@ -95,6 +95,17 @@ def main():
                 "data": info,
             }
         )
+    upload_data.append(
+        {
+            "class": "statistics",
+            "data": {
+                "total_road_length": total_road_length,
+                "total_driving_lane_length": total_driving_lane_length,
+                "road_count": len(road_infos),
+                "traffic_light_count": len(traffic_light_infos),
+            },
+        }
+    )
     print(f"上传数据准备完成，共{len(upload_data)}条")
     # 上传到MongoDB
     client = MongoClient(args.mongo_uri)
