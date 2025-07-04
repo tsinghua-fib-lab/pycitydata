@@ -291,6 +291,9 @@ class Map:
             geos = unary_union(lane_shapelys)
             center = geos.centroid
             junc["center"] = {"x": center.x, "y": center.y}
+            # 计算中心点的经纬度坐标
+            lng, lat = projector(center.x, center.y, inverse=True)
+            junc["center_lnglat"] = {"lng": lng, "lat": lat}
         logging.debug("Finish calculate junction center")
 
         return {

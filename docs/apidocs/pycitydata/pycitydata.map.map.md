@@ -45,7 +45,7 @@
 
 ````
 
-`````{py:class} Map(mongo_uri: typing.Optional[str] = None, mongo_db: typing.Optional[str] = None, mongo_coll: typing.Optional[str] = None, cache_dir: typing.Optional[str] = None, pb_path: typing.Optional[str] = None)
+`````{py:class} Map(mongo_uri: typing.Optional[str] = None, mongo_db: typing.Optional[str] = None, mongo_coll: typing.Optional[str] = None, cache_dir: typing.Optional[str] = None, cache_path: typing.Optional[str] = None, pb_path: typing.Optional[str] = None)
 :canonical: pycitydata.map.map.Map
 
 ```{autodoc2-docstring} pycitydata.map.map.Map
