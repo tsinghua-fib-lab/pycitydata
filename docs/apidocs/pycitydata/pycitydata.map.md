@@ -14,6 +14,7 @@
 :maxdepth: 1
 
 pycitydata.map.map
+pycitydata.map.format_converter
 ```
 
 ## Package Contents

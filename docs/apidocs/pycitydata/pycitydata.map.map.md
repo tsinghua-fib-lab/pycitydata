@@ -198,6 +198,14 @@
 
 ````
 
+````{py:method} position2xy(position: typing.Union[pycityproto.city.geo.v2.geo_pb2.Position, typing.Dict[str, typing.Any]]) -> typing.Tuple[float, float]
+:canonical: pycitydata.map.map.Map.position2xy
+
+```{autodoc2-docstring} pycitydata.map.map.Map.position2xy
+```
+
+````
+
 ````{py:method} get_header()
 :canonical: pycitydata.map.map.Map.get_header
 

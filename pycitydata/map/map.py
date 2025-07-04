@@ -20,6 +20,8 @@ from pymongo import MongoClient
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import substring, unary_union
 
+from .format_converter import dict2pb
+
 __all__ = ["Map"]
 
 
@@ -443,6 +445,32 @@ class Map:
 
         """
         return self.projector(x, y, inverse=True)
+
+    def position2xy(
+        self, position: Union[geo_pb2.Position, Dict[str, Any]]
+    ) -> Tuple[float, float]:
+        """
+        将position转换为xy坐标
+        Convert position to xy coordinates
+        """
+
+        # 如果position是dict，则转换为geo_pb2.Position
+        if isinstance(position, dict):
+            position = dict2pb(position, geo_pb2.Position())
+        if position.HasField("aoi_position"):
+            aoi_id = position.aoi_position.aoi_id
+            aoi = self.aois[aoi_id]
+            # 计算aoi的中心点
+            center = aoi["shapely_xy"].centroid
+            return center.x, center.y
+        elif position.HasField("lane_position"):
+            lane_id = position.lane_position.lane_id
+            s = position.lane_position.s
+            lane = self.lanes[lane_id]
+            point = lane["shapely_xy"].interpolate(s)
+            return point.x, point.y
+        else:
+            assert False, f"position {position} has no valid field"
 
     def get_header(self):
         """
